@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Lokale configuratie (SDK-pad, machine-specifiek)
+local.properties
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+*.class
+*.hprof
+
+# Signeringsbestanden
+*.keystore
+*.jks
+
+# Gegenereerde bestanden
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# macOS
+.DS_Store
+
+# Google Services (bevat API-sleutels indien aanwezig)
+google-services.json

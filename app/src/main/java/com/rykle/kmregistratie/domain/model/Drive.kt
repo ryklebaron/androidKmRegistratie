@@ -1,0 +1,20 @@
+package com.rykle.kmregistratie.domain.model
+
+data class Drive(
+    val id: Long = 0,
+    val startTime: Long,
+    val endTime: Long? = null,
+    val startLat: Double,
+    val startLng: Double,
+    val startAddress: String? = null,
+    val endLat: Double? = null,
+    val endLng: Double? = null,
+    val endAddress: String? = null,
+    val driveType: DriveType,
+    val startKm: Int? = null,
+    val endKm: Int? = null,
+    val hasKmMismatch: Boolean = false
+) {
+    val isActive: Boolean get() = endTime == null
+    val kmDriven: Int? get() = if (startKm != null && endKm != null) endKm - startKm else null
+}
