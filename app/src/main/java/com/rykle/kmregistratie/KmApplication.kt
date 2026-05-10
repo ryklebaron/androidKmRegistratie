@@ -1,7 +1,6 @@
 package com.rykle.kmregistratie
 
 import android.app.Application
-import android.app.KeyguardManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import androidx.car.app.connection.CarConnection
@@ -18,17 +17,7 @@ class KmApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        postPickerIfLocked()
         observeCarConnection()
-    }
-
-    // Wanneer het app-proces start terwijl de telefoon vergrendeld is (bijv. doordat
-    // Android Auto de service opstart), direct de picker-notificatie tonen.
-    private fun postPickerIfLocked() {
-        val keyguard = getSystemService(KeyguardManager::class.java)
-        if (keyguard.isKeyguardLocked) {
-            postPickerNotification(this, connectionTracker.canContinueDrive())
-        }
     }
 
     private fun observeCarConnection() {
