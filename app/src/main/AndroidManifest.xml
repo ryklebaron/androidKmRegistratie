@@ -44,6 +44,10 @@
         </service>
 
         <activity
+            android:name=".service.VolvoOAuthActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".service.DrivePickerActivity"
             android:exported="false"
             android:showWhenLocked="true"

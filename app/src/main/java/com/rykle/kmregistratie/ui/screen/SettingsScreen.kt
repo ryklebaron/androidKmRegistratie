@@ -49,7 +49,9 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
     val scope = rememberCoroutineScope()
     var vin by remember { mutableStateOf(viewModel.prefs.vin) }
     var apiKey by remember { mutableStateOf(viewModel.prefs.vccApiKey) }
-    var token by remember { mutableStateOf(viewModel.prefs.accessToken) }
+    var clientId by remember { mutableStateOf(viewModel.prefs.clientId) }
+    var clientSecret by remember { mutableStateOf(viewModel.prefs.clientSecret) }
+    var isLinked by remember { mutableStateOf(viewModel.prefs.refreshToken.isNotBlank()) }
 
     val notifManager = context.getSystemService(NotificationManager::class.java)
     val powerManager = context.getSystemService(PowerManager::class.java)
@@ -82,6 +84,7 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
                     canUseFullScreenIntent = notifManager.canUseFullScreenIntent()
                 }
                 isBatteryOptimized = !powerManager.isIgnoringBatteryOptimizations(context.packageName)
+                isLinked = viewModel.prefs.refreshToken.isNotBlank()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -173,22 +176,83 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
         Spacer(Modifier.height(12.dp))
 
         OutlinedTextField(
-            value = token,
-            onValueChange = { token = it },
-            label = { Text(stringResource(R.string.settings_token_label)) },
+            value = clientId,
+            onValueChange = { clientId = it },
+            label = { Text(stringResource(R.string.settings_client_id_label)) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = clientSecret,
+            onValueChange = { clientSecret = it },
+            label = { Text(stringResource(R.string.settings_client_secret_label)) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
 
         Button(
             onClick = {
-                viewModel.saveSettings(vin, apiKey, token)
+                viewModel.saveSettings(vin, apiKey, clientId, clientSecret)
                 scope.launch { snackbarHostState.showSnackbar("Instellingen opgeslagen") }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.settings_save))
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        VolvoLinkSection(
+            isLinked = isLinked,
+            canLink = clientId.isNotBlank() && clientSecret.isNotBlank(),
+            onLink = {
+                viewModel.saveSettings(vin, apiKey, clientId, clientSecret)
+                context.startActivity(
+                    android.content.Intent(context, com.rykle.kmregistratie.service.VolvoOAuthActivity::class.java)
+                )
+            }
+        )
+
+    }
+}
+
+@Composable
+private fun VolvoLinkSection(isLinked: Boolean, canLink: Boolean, onLink: () -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.volvo_link_title),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = if (isLinked) stringResource(R.string.volvo_link_status_linked)
+                       else stringResource(R.string.volvo_link_status_not_linked),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isLinked) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onLink,
+                enabled = canLink,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    if (isLinked) stringResource(R.string.volvo_link_relink)
+                    else stringResource(R.string.volvo_link_btn)
+                )
+            }
+            if (!canLink) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.volvo_link_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

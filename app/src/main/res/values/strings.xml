@@ -11,8 +11,10 @@
     <string name="km_mismatch_warning">Let op: km-stand klopt niet met vorige rit</string>
     <string name="export_success">Export aangemaakt</string>
     <string name="settings_vin_label">Volvo VIN</string>
-    <string name="settings_api_key_label">Volvo API Key</string>
-    <string name="settings_token_label">Volvo Access Token</string>
+    <string name="settings_api_key_label">Volvo VCC-Api-Key</string>
+    <string name="settings_client_id_label">Volvo Client ID</string>
+    <string name="settings_client_secret_label">Volvo Client Secret</string>
+    <string name="settings_refresh_token_label">Volvo Refresh Token</string>
     <string name="settings_save">Opslaan</string>
     <string name="nav_drives">Ritten</string>
     <string name="nav_settings">Instellingen</string>
@@ -48,4 +50,21 @@
     <string name="perm_battery_title">Batterijoptimalisatie actief</string>
     <string name="perm_battery_desc">Android beperkt achtergrondprocessen voor deze app. Hierdoor start de app niet op bij verbinding met Android Auto. Stel in op \'Onbeperkt\'.</string>
     <string name="perm_battery_button">Onbeperkt instellen</string>
+    <string name="volvo_link_title">Volvo-account koppelen</string>
+    <string name="volvo_link_status_linked">✓ Gekoppeld — tokens worden automatisch vernieuwd</string>
+    <string name="volvo_link_status_not_linked">Niet gekoppeld</string>
+    <string name="volvo_link_btn">Koppelen met Volvo</string>
+    <string name="volvo_link_relink">Opnieuw koppelen</string>
+    <string name="volvo_link_hint">Vul eerst Client ID en Client Secret in en sla op</string>
+    <string name="oauth_step_title">Kopieer de callback-URL</string>
+    <string name="oauth_step_desc">De browser heeft je doorgestuurd naar een foutpagina — dat klopt. Kopieer de volledige URL uit de adresbalk (begint met https://localhost?code=…) en plak hem hieronder.</string>
+    <string name="oauth_url_label">Callback URL</string>
+    <string name="oauth_confirm">Bevestigen</string>
+    <string name="oauth_error_no_code">Geen autorisatiecode gevonden in de URL. Zorg dat je de volledige URL kopieert.</string>
+    <string name="oauth_loading">Bezig met koppelen…</string>
+    <string name="oauth_success">Succesvol gekoppeld!</string>
+    <string name="oauth_error_title">Koppeling mislukt</string>
+    <string name="oauth_error_verifier">Verificatiecode ontbreekt. Probeer opnieuw te koppelen.</string>
+    <string name="oauth_error_unknown">Onbekende fout</string>
+    <string name="oauth_dismiss">Sluiten</string>
 </resources>

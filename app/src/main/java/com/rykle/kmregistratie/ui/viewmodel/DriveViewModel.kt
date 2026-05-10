@@ -89,9 +89,11 @@ class DriveViewModel @Inject constructor(
         postPickerNotification(context, connectionTracker.canContinueDrive())
     }
 
-    fun saveSettings(vin: String, apiKey: String, token: String) {
+    fun saveSettings(vin: String, apiKey: String, clientId: String, clientSecret: String) {
         prefs.vin = vin
         prefs.vccApiKey = apiKey
-        prefs.accessToken = token
+        prefs.clientId = clientId
+        prefs.clientSecret = clientSecret
     }
+
 }

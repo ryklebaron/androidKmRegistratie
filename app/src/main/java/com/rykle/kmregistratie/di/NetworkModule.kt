@@ -1,6 +1,7 @@
 package com.rykle.kmregistratie.di
 
 import com.rykle.kmregistratie.data.remote.VolvoApiService
+import com.rykle.kmregistratie.data.remote.VolvoAuthService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -35,4 +36,14 @@ object NetworkModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(VolvoApiService::class.java)
+
+    @Provides
+    @Singleton
+    fun provideVolvoAuthService(client: OkHttpClient): VolvoAuthService =
+        Retrofit.Builder()
+            .baseUrl("https://volvoid.eu.volvocars.com/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(VolvoAuthService::class.java)
 }
