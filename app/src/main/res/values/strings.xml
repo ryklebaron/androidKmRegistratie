@@ -57,7 +57,7 @@
     <string name="volvo_link_relink">Opnieuw koppelen</string>
     <string name="volvo_link_hint">Vul eerst Client ID en Client Secret in en sla op</string>
     <string name="oauth_step_title">Kopieer de callback-URL</string>
-    <string name="oauth_step_desc">De browser heeft je doorgestuurd naar een foutpagina — dat klopt. Kopieer de volledige URL uit de adresbalk (begint met https://localhost?code=…) en plak hem hieronder.</string>
+    <string name="oauth_step_desc">De browser heeft je doorgestuurd naar een pagina op GitHub. Kopieer de volledige URL uit de adresbalk (begint met https://ryklebaron.github.io/androidKmRegistratie?code=…) en plak hem hieronder.</string>
     <string name="oauth_url_label">Callback URL</string>
     <string name="oauth_confirm">Bevestigen</string>
     <string name="oauth_error_no_code">Geen autorisatiecode gevonden in de URL. Zorg dat je de volledige URL kopieert.</string>

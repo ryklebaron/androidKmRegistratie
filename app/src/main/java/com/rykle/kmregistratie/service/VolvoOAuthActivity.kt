@@ -128,7 +128,7 @@ class VolvoOAuthActivity : ComponentActivity() {
     }
 
     companion object {
-        const val REDIRECT_URI = "https://localhost"
+        const val REDIRECT_URI = "https://ryklebaron.github.io/androidKmRegistratie"
         const val SCOPE = "openid conve:odometer_status"
     }
 }
