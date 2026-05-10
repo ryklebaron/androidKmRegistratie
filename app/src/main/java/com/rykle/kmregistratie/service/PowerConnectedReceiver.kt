@@ -14,5 +14,9 @@ class PowerConnectedReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_POWER_CONNECTED) return
         postPickerNotification(context, connectionTracker.canContinueDrive())
+        context.startActivity(
+            Intent(context, DrivePickerActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        )
     }
 }
