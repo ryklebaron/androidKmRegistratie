@@ -4,6 +4,7 @@ import androidx.car.app.CarAppService
 import androidx.car.app.Session
 import androidx.car.app.validation.HostValidator
 import com.rykle.kmregistratie.domain.usecase.EndDriveUseCase
+import com.rykle.kmregistratie.domain.usecase.NextcloudSyncUseCase
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -12,6 +13,7 @@ class KmCarAppService : CarAppService() {
 
     @Inject lateinit var endDriveUseCase: EndDriveUseCase
     @Inject lateinit var connectionTracker: ConnectionTracker
+    @Inject lateinit var nextcloudSyncUseCase: NextcloudSyncUseCase
 
     override fun onCreate() {
         super.onCreate()
@@ -27,5 +29,5 @@ class KmCarAppService : CarAppService() {
 
     override fun createHostValidator(): HostValidator = HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
 
-    override fun onCreateSession(): Session = DriveSession(endDriveUseCase, connectionTracker)
+    override fun onCreateSession(): Session = DriveSession(endDriveUseCase, connectionTracker, nextcloudSyncUseCase)
 }

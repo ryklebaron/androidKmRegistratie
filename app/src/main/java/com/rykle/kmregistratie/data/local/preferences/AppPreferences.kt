@@ -50,6 +50,18 @@ class AppPreferences @Inject constructor(@ApplicationContext private val context
         get() = prefs.getString(KEY_PENDING_VERIFIER, "") ?: ""
         set(value) = prefs.edit().putString(KEY_PENDING_VERIFIER, value).apply()
 
+    var nextcloudUrl: String
+        get() = prefs.getString(KEY_NEXTCLOUD_URL, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_NEXTCLOUD_URL, value).apply()
+
+    var nextcloudUsername: String
+        get() = prefs.getString(KEY_NEXTCLOUD_USERNAME, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_NEXTCLOUD_USERNAME, value).apply()
+
+    var nextcloudPassword: String
+        get() = prefs.getString(KEY_NEXTCLOUD_PASSWORD, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_NEXTCLOUD_PASSWORD, value).apply()
+
     companion object {
         private const val KEY_VIN = "vin"
         private const val KEY_VCC_API_KEY = "vcc_api_key"
@@ -58,5 +70,8 @@ class AppPreferences @Inject constructor(@ApplicationContext private val context
         private const val KEY_CLIENT_SECRET = "client_secret"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
         private const val KEY_PENDING_VERIFIER = "pending_code_verifier"
+        private const val KEY_NEXTCLOUD_URL = "nextcloud_url"
+        private const val KEY_NEXTCLOUD_USERNAME = "nextcloud_username"
+        private const val KEY_NEXTCLOUD_PASSWORD = "nextcloud_password"
     }
 }

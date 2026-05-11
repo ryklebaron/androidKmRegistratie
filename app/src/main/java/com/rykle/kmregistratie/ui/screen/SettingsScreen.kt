@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -52,6 +54,9 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
     var clientId by remember { mutableStateOf(viewModel.prefs.clientId) }
     var clientSecret by remember { mutableStateOf(viewModel.prefs.clientSecret) }
     var isLinked by remember { mutableStateOf(viewModel.prefs.refreshToken.isNotBlank()) }
+    var nextcloudUrl by remember { mutableStateOf(viewModel.prefs.nextcloudUrl) }
+    var nextcloudUsername by remember { mutableStateOf(viewModel.prefs.nextcloudUsername) }
+    var nextcloudPassword by remember { mutableStateOf(viewModel.prefs.nextcloudPassword) }
 
     val notifManager = context.getSystemService(NotificationManager::class.java)
     val powerManager = context.getSystemService(PowerManager::class.java)
@@ -94,6 +99,7 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         Text(
@@ -215,6 +221,22 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
             }
         )
 
+        Spacer(Modifier.height(16.dp))
+
+        NextcloudSection(
+            url = nextcloudUrl,
+            username = nextcloudUsername,
+            password = nextcloudPassword,
+            onUrlChange = { nextcloudUrl = it },
+            onUsernameChange = { nextcloudUsername = it },
+            onPasswordChange = { nextcloudPassword = it },
+            onSave = {
+                viewModel.saveNextcloudSettings(nextcloudUrl, nextcloudUsername, nextcloudPassword)
+                scope.launch { snackbarHostState.showSnackbar("Nextcloud-instellingen opgeslagen") }
+            }
+        )
+
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -252,6 +274,59 @@ private fun VolvoLinkSection(isLinked: Boolean, canLink: Boolean, onLink: () -> 
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NextcloudSection(
+    url: String,
+    username: String,
+    password: String,
+    onUrlChange: (String) -> Unit,
+    onUsernameChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onSave: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Nextcloud synchronisatie", style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "De volledige rittenlijst wordt automatisch als CSV geüpload na elke rit.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = url,
+                onValueChange = onUrlChange,
+                label = { Text("Nextcloud URL") },
+                placeholder = { Text("https://cloud.example.com") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = username,
+                onValueChange = onUsernameChange,
+                label = { Text("Gebruikersnaam") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = password,
+                onValueChange = onPasswordChange,
+                label = { Text("App-wachtwoord") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onSave, modifier = Modifier.fillMaxWidth()) {
+                Text("Nextcloud opslaan")
             }
         }
     }

@@ -1,6 +1,8 @@
 package com.rykle.kmregistratie.ui.screen
 
-import androidx.compose.foundation.clickable
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.rykle.kmregistratie.ui.viewmodel.SyncStatus
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -108,10 +111,11 @@ private fun utcMidnightToLocalEnd(utcMs: Long): Long {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DriveListScreen(viewModel: DriveViewModel, onDriveClick: (Long) -> Unit = {}) {
     val drives by viewModel.drives.collectAsState()
+    val syncStatus by viewModel.syncStatus.collectAsState()
     val context = LocalContext.current
 
     var selectedPeriod by rememberSaveable { mutableStateOf(Period.MONTH) }
@@ -120,6 +124,9 @@ fun DriveListScreen(viewModel: DriveViewModel, onDriveClick: (Long) -> Unit = {}
     var showDateRangePicker by remember { mutableStateOf(false) }
     var showStartDialog by remember { mutableStateOf(false) }
     var showExportSheet by remember { mutableStateOf(false) }
+    var selectedIds by remember { mutableStateOf(emptySet<Long>()) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    val selectionMode = selectedIds.isNotEmpty()
 
     val range = remember(selectedPeriod, customFrom, customTo) {
         periodToRange(selectedPeriod, customFrom, customTo)
@@ -136,6 +143,8 @@ fun DriveListScreen(viewModel: DriveViewModel, onDriveClick: (Long) -> Unit = {}
         filteredDrives.filter { it.driveType == DriveType.PRIVATE }.sumOf { it.kmDriven ?: 0 }
     }
     val activeDrive = drives.firstOrNull { it.isActive }
+
+    BackHandler(enabled = selectionMode) { selectedIds = emptySet() }
 
     // ── Date range picker ─────────────────────────────────────────────────
     if (showDateRangePicker) {
@@ -174,14 +183,61 @@ fun DriveListScreen(viewModel: DriveViewModel, onDriveClick: (Long) -> Unit = {}
         )
     }
 
-    // ── Export bottom sheet ───────────────────────────────────────────────
+    // ── Export/import bottom sheet ────────────────────────────────────────
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.importDrives(context, uri) { imported, skipped, error ->
+                val msg = if (error) "Import mislukt"
+                    else "$imported ritten hersteld, $skipped al aanwezig"
+                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     if (showExportSheet) {
         ExportSheet(
             drives = drives,
+            nextcloudConfigured = viewModel.nextcloudConfigured,
             onDismiss = { showExportSheet = false },
             onExport = { from, to ->
                 viewModel.exportAndShare(context, from, to)
                 showExportSheet = false
+            },
+            onImportFromNextcloud = {
+                showExportSheet = false
+                viewModel.importFromNextcloud { imported, skipped, error ->
+                    val msg = if (error) "Nextcloud herstel mislukt"
+                        else "$imported ritten hersteld, $skipped al aanwezig"
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
+                }
+            },
+            onImport = {
+                showExportSheet = false
+                importLauncher.launch("text/*")
+            }
+        )
+    }
+
+    // ── Delete confirmation ───────────────────────────────────────────────
+    if (showDeleteConfirmation) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("${selectedIds.size} ritten verwijderen?") },
+            text = { Text("Dit kan niet ongedaan worden gemaakt.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.deleteMultipleDrives(selectedIds)
+                        selectedIds = emptySet()
+                        showDeleteConfirmation = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Verwijderen") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) { Text("Annuleren") }
             }
         )
     }
@@ -189,7 +245,15 @@ fun DriveListScreen(viewModel: DriveViewModel, onDriveClick: (Long) -> Unit = {}
     // ── Main content ──────────────────────────────────────────────────────
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
 
-        Text(stringResource(R.string.screen_title_drives), style = MaterialTheme.typography.headlineMedium)
+        // Header — normal or selection mode
+        if (selectionMode) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("${selectedIds.size} geselecteerd", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                TextButton(onClick = { selectedIds = emptySet() }) { Text("Annuleren") }
+            }
+        } else {
+            Text(stringResource(R.string.screen_title_drives), style = MaterialTheme.typography.headlineMedium)
+        }
 
         Spacer(Modifier.height(12.dp))
 
@@ -212,23 +276,46 @@ fun DriveListScreen(viewModel: DriveViewModel, onDriveClick: (Long) -> Unit = {}
 
         Spacer(Modifier.height(12.dp))
 
+        // Buttons — normal or selection mode
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (activeDrive != null) {
+            if (selectionMode) {
+                OutlinedButton(
+                    onClick = {
+                        viewModel.exportAndShareSelected(context, selectedIds)
+                        selectedIds = emptySet()
+                    },
+                    modifier = Modifier.weight(1f)
+                ) { Text("Delen (${selectedIds.size})") }
                 Button(
-                    onClick = { viewModel.endDrive() },
+                    onClick = { showDeleteConfirmation = true },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Beëindig rit") }
+                ) { Text("Verwijder (${selectedIds.size})") }
             } else {
-                Button(
-                    onClick = { showStartDialog = true },
+                if (activeDrive != null) {
+                    Button(
+                        onClick = { viewModel.endDrive() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Beëindig rit") }
+                } else {
+                    Button(
+                        onClick = { showStartDialog = true },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Start rit") }
+                }
+                OutlinedButton(
+                    onClick = { showExportSheet = true },
                     modifier = Modifier.weight(1f)
-                ) { Text("Start rit") }
+                ) { Text("Import / Export") }
             }
-            OutlinedButton(
-                onClick = { showExportSheet = true },
-                modifier = Modifier.weight(1f)
-            ) { Text(stringResource(R.string.btn_export_csv)) }
+        }
+
+        if (viewModel.nextcloudConfigured) {
+            SyncStatusRow(
+                syncStatus = syncStatus,
+                onSyncNow = { viewModel.syncToNextcloud() }
+            )
         }
 
         Spacer(Modifier.height(8.dp))
@@ -242,7 +329,21 @@ fun DriveListScreen(viewModel: DriveViewModel, onDriveClick: (Long) -> Unit = {}
         } else {
             LazyColumn(modifier = Modifier.padding(top = 8.dp)) {
                 items(drives, key = { it.id }) { drive ->
-                    DriveCard(drive = drive, onClick = { onDriveClick(drive.id) })
+                    DriveCard(
+                        drive = drive,
+                        selected = drive.id in selectedIds,
+                        onClick = {
+                            if (selectionMode) {
+                                selectedIds = if (drive.id in selectedIds)
+                                    selectedIds - drive.id else selectedIds + drive.id
+                            } else {
+                                onDriveClick(drive.id)
+                            }
+                        },
+                        onLongClick = {
+                            selectedIds = selectedIds + drive.id
+                        }
+                    )
                 }
             }
         }
@@ -289,8 +390,11 @@ private fun StartDriveDialog(
 @Composable
 private fun ExportSheet(
     drives: List<Drive>,
+    nextcloudConfigured: Boolean,
     onDismiss: () -> Unit,
     onExport: (from: Long?, to: Long?) -> Unit,
+    onImportFromNextcloud: () -> Unit,
+    onImport: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedPeriod by remember { mutableStateOf(Period.MONTH) }
@@ -367,6 +471,50 @@ private fun ExportSheet(
             ) {
                 Text("Exporteer ${filteredDrives.size} ritten als CSV")
             }
+
+            HorizontalDivider()
+
+            Text("Ritten herstellen", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Importeer een eerder geëxporteerde CSV om verwijderde ritten terug te zetten. Bestaande ritten worden overgeslagen.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (nextcloudConfigured) {
+                Button(onClick = onImportFromNextcloud, modifier = Modifier.fillMaxWidth()) {
+                    Text("Herstel van Nextcloud")
+                }
+            }
+            OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) {
+                Text("Importeer lokaal CSV-bestand")
+            }
+        }
+    }
+}
+
+// ── Sync status row ───────────────────────────────────────────────────────────
+
+@Composable
+private fun SyncStatusRow(syncStatus: SyncStatus, onSyncNow: () -> Unit) {
+    val timeFmt = remember { java.text.SimpleDateFormat("HH:mm", java.util.Locale("nl", "NL")) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val (statusText, statusColor) = when (syncStatus) {
+            SyncStatus.Idle -> "Nog niet gesynchroniseerd" to MaterialTheme.colorScheme.onSurfaceVariant
+            SyncStatus.Syncing -> "Synchroniseren…" to MaterialTheme.colorScheme.onSurfaceVariant
+            is SyncStatus.Success -> "Gesynchroniseerd om ${timeFmt.format(java.util.Date(syncStatus.timestamp))}" to MaterialTheme.colorScheme.primary
+            is SyncStatus.Error -> "Sync mislukt: ${syncStatus.message}" to MaterialTheme.colorScheme.error
+        }
+        Text(statusText, style = MaterialTheme.typography.bodySmall, color = statusColor, modifier = Modifier.weight(1f))
+        if (syncStatus !is SyncStatus.Syncing) {
+            TextButton(onClick = onSyncNow, contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                Text("Sync nu", style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
@@ -399,16 +547,26 @@ private fun SummaryCard(businessKm: Int, privateKm: Int, count: Int) {
 
 // ── Drive card ────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DriveCard(drive: Drive, onClick: () -> Unit = {}) {
+private fun DriveCard(
+    drive: Drive,
+    selected: Boolean = false,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {},
+) {
     val fmt = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale("nl", "NL"))
-    val cardColor = if (drive.hasKmMismatch) MismatchRed.copy(alpha = 0.15f) else Color.Unspecified
+    val cardColor = when {
+        selected -> MaterialTheme.colorScheme.primaryContainer
+        drive.hasKmMismatch -> MismatchRed.copy(alpha = 0.15f)
+        else -> Color.Unspecified
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable { onClick() },
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
         colors = CardDefaults.cardColors(containerColor = cardColor)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {

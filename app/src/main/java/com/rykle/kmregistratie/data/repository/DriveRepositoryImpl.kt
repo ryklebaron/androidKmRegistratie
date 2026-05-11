@@ -67,6 +67,30 @@ class DriveRepositoryImpl @Inject constructor(
         driveDao.deleteById(driveId)
     }
 
+    override suspend fun deleteAllDrives() {
+        driveDao.deleteAll()
+    }
+
+    override suspend fun getDriveByStartTime(startTime: Long): Drive? =
+        driveDao.getByStartTime(startTime)?.toDomain()
+
+    override suspend fun insertFullDrive(
+        startTime: Long, endTime: Long?,
+        startLat: Double, startLng: Double, startAddress: String?,
+        endLat: Double?, endLng: Double?, endAddress: String?,
+        driveType: DriveType, startKm: Int?, endKm: Int?, hasKmMismatch: Boolean
+    ) {
+        driveDao.insert(
+            DriveEntity(
+                startTime = startTime, endTime = endTime,
+                startLat = startLat, startLng = startLng, startAddress = startAddress,
+                endLat = endLat, endLng = endLng, endAddress = endAddress,
+                driveType = driveType.name,
+                startKm = startKm, endKm = endKm, hasKmMismatch = hasKmMismatch
+            )
+        )
+    }
+
     private fun DriveEntity.toDomain() = Drive(
         id = id,
         startTime = startTime,

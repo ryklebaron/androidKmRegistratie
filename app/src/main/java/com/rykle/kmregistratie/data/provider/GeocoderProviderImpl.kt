@@ -74,7 +74,9 @@ class GeocoderProviderImpl @Inject constructor(
             address.subThoroughfare?.let { append(" $it") }
         }.takeIf { it.isNotBlank() }
         val city = address.locality ?: address.subAdminArea
+        val province = address.adminArea
         return when {
+            street != null && city != null && province != null -> "$street, $city, $province"
             street != null && city != null -> "$street, $city"
             street != null -> street
             city != null -> city

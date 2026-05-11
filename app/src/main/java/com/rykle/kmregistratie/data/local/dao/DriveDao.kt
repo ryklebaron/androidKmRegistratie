@@ -40,4 +40,10 @@ interface DriveDao {
 
     @Query("DELETE FROM drives WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM drives")
+    suspend fun deleteAll()
+
+    @Query("SELECT * FROM drives WHERE startTime = :startTime LIMIT 1")
+    suspend fun getByStartTime(startTime: Long): DriveEntity?
 }

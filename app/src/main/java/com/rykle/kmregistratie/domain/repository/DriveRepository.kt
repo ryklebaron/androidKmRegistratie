@@ -22,4 +22,12 @@ interface DriveRepository {
     suspend fun updateEndAddress(driveId: Long, address: String)
     suspend fun reopenDrive(driveId: Long)
     suspend fun deleteDrive(driveId: Long)
+    suspend fun deleteAllDrives()
+    suspend fun getDriveByStartTime(startTime: Long): Drive?
+    suspend fun insertFullDrive(
+        startTime: Long, endTime: Long?,
+        startLat: Double, startLng: Double, startAddress: String?,
+        endLat: Double?, endLng: Double?, endAddress: String?,
+        driveType: DriveType, startKm: Int?, endKm: Int?, hasKmMismatch: Boolean
+    )
 }
