@@ -164,12 +164,9 @@ fun DriveListScreen(viewModel: DriveViewModel, onDriveClick: (Long) -> Unit = {}
 
     // ── Start dialog ──────────────────────────────────────────────────────
     if (showStartDialog) {
-        val canContinue = remember { viewModel.canContinueDrive() }
         StartDriveDialog(
-            canContinue = canContinue,
             onBusiness = { viewModel.startDrive(DriveType.BUSINESS); showStartDialog = false },
             onPrivate = { viewModel.startDrive(DriveType.PRIVATE); showStartDialog = false },
-            onContinue = { viewModel.continueDrive(); showStartDialog = false },
             onDismiss = { showStartDialog = false }
         )
     }
@@ -253,10 +250,8 @@ fun DriveListScreen(viewModel: DriveViewModel, onDriveClick: (Long) -> Unit = {}
 
 @Composable
 private fun StartDriveDialog(
-    canContinue: Boolean,
     onBusiness: () -> Unit,
     onPrivate: () -> Unit,
-    onContinue: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     androidx.compose.material3.AlertDialog(
@@ -264,12 +259,6 @@ private fun StartDriveDialog(
         title = { Text("Type rit") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (canContinue) {
-                    Button(onClick = onContinue, modifier = Modifier.fillMaxWidth()) {
-                        Text("Hervat vorige rit")
-                    }
-                    HorizontalDivider()
-                }
                 Button(onClick = onBusiness, modifier = Modifier.fillMaxWidth()) {
                     Text("Zakelijk")
                 }
@@ -422,7 +411,11 @@ private fun DriveCard(drive: Drive, onClick: () -> Unit = {}) {
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = if (drive.isActive) "Actief" else drive.kmDriven?.let { "$it km" } ?: "",
+                    text = when {
+                        drive.isActive -> "Actief"
+                        drive.kmPending -> "? km"
+                        else -> drive.kmDriven?.let { "$it km" } ?: ""
+                    },
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -431,7 +424,15 @@ private fun DriveCard(drive: Drive, onClick: () -> Unit = {}) {
                 Text("→ ${fmt.format(Date(drive.endTime))}", style = MaterialTheme.typography.bodyMedium)
             }
             if (drive.startKm != null) {
-                Text("KM: ${drive.startKm} → ${drive.endKm ?: "…"}", style = MaterialTheme.typography.bodySmall)
+                val endKm = if (drive.kmPending) null else drive.endKm
+                Text("KM: ${drive.startKm} → ${endKm ?: "…"}", style = MaterialTheme.typography.bodySmall)
+            }
+            if (drive.kmPending) {
+                Text(
+                    text = "⏳ Eindstand nog invullen",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
             if (drive.hasKmMismatch) {
                 Text(

@@ -60,7 +60,10 @@ class StartDriveUseCase @Inject constructor(
         }
 
         val lastDrive = driveRepository.getLatestCompletedDrive()
-        val hasKmMismatch = km != null && lastDrive?.endKm != null && km != lastDrive.endKm
+        // Bij een vorige rit zonder definitieve eindstand wordt de mismatch pas bepaald
+        // zodra die eindstand is ingevuld (zie ResolvePendingKmUseCase).
+        val hasKmMismatch = km != null && lastDrive?.endKm != null &&
+            !lastDrive.kmPending && km != lastDrive.endKm
 
         val driveId = driveRepository.startDrive(
             startTime = System.currentTimeMillis(),

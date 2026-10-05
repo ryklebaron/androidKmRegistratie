@@ -1,7 +1,6 @@
 package com.rykle.kmregistratie.ui
 
 import android.Manifest
-import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,9 +29,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.rykle.kmregistratie.R
-import com.rykle.kmregistratie.service.cancelPickerNotification
 import com.rykle.kmregistratie.ui.screen.DriveDetailScreen
 import com.rykle.kmregistratie.ui.screen.DriveListScreen
+import com.rykle.kmregistratie.ui.screen.PendingKmDialog
 import com.rykle.kmregistratie.ui.screen.SettingsScreen
 import com.rykle.kmregistratie.ui.theme.KmRegistratieTheme
 import com.rykle.kmregistratie.ui.viewmodel.DriveViewModel
@@ -49,27 +48,31 @@ class MainActivity : ComponentActivity() {
                     ActivityResultContracts.RequestMultiplePermissions()
                 ) { /* resultaat wordt genegeerd; FusedLocationProvider valt terug op 0.0 bij weigering */ }
 
+                val viewModel: DriveViewModel = hiltViewModel()
+
                 LaunchedEffect(Unit) {
-                    val permissions = buildList {
-                        add(Manifest.permission.ACCESS_FINE_LOCATION)
-                        add(Manifest.permission.ACCESS_COARSE_LOCATION)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            add(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    }
-                    locationPermissionLauncher.launch(permissions.toTypedArray())
+                    locationPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                        )
+                    )
                 }
 
                 val navController = rememberNavController()
                 val snackbarHostState = remember { SnackbarHostState() }
-                val viewModel: DriveViewModel = hiltViewModel()
 
-                // Picker-notificatie bijhouden op basis van actieve rit
-                val drives by viewModel.drives.collectAsState()
-                val hasActiveDrive = drives.any { it.isActive }
-                LaunchedEffect(hasActiveDrive) {
-                    if (hasActiveDrive) cancelPickerNotification(this@MainActivity)
+                val pendingKm by viewModel.pendingKm.collectAsState()
+                pendingKm?.let { state ->
+                    PendingKmDialog(
+                        state = state,
+                        onConfirm = viewModel::confirmPendingKm,
+                        onSync = viewModel::syncPendingKm,
+                        onPostpone = viewModel::postponePendingKm,
+                        onDelete = viewModel::deletePendingKmDrive,
+                    )
                 }
+
                 val currentBackStack by navController.currentBackStackEntryAsState()
                 val currentRoute = currentBackStack?.destination?.route
 

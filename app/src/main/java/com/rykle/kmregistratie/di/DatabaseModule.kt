@@ -19,6 +19,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): KmDatabase =
         Room.databaseBuilder(context, KmDatabase::class.java, "km_registratie.db")
+            .addMigrations(KmDatabase.MIGRATION_2_3)
             .fallbackToDestructiveMigration()
             .build()
 

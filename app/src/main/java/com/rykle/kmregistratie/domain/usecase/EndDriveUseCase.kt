@@ -16,19 +16,21 @@ class EndDriveUseCase @Inject constructor(
     private val geocoderProvider: GeocoderProvider,
     private val locationHistory: LocationHistoryRepository,
 ) {
-    suspend operator fun invoke(manualEndKm: Int? = null) {
-        val activeDrive = driveRepository.getActiveDrive() ?: return
+    /** Beëindigt de actieve rit en geeft true terug als de eindstand nog ingevuld moet worden. */
+    suspend operator fun invoke(): Boolean {
+        val activeDrive = driveRepository.getActiveDrive() ?: return false
 
         val gps = locationProvider.getCurrentLocation()
-        // Fall back to last known location if GPS unavailable (session is ending, can't prompt user)
+        // Fall back to last known location if GPS unavailable
         val location: LocationPoint? = gps ?: run {
             val last = locationHistory.getRecentLocations().firstOrNull()
             last?.let { LocationPoint(it.latitude, it.longitude) }
         }
 
-        val endKm = manualEndKm
-            ?: runCatching { volvoRepository.getCurrentOdometer() }.getOrNull()
-            ?: locationHistory.getLastKm()
+        val endKm = runCatching { volvoRepository.getCurrentOdometer() }.getOrNull()
+        // De auto stuurt pas na een tijdje vergrendeld staan een nieuwe stand naar de Volvo-cloud.
+        // Gelijk aan de startstand (of geen stand) betekent dus: nog niet gesynct.
+        val kmPending = endKm == null || endKm == activeDrive.startKm
 
         driveRepository.endDrive(
             driveId = activeDrive.id,
@@ -50,6 +52,11 @@ class EndDriveUseCase @Inject constructor(
             }
         }
 
-        if (endKm != null) locationHistory.saveLastKm(endKm)
+        if (kmPending) {
+            driveRepository.markKmPending(activeDrive.id)
+        } else {
+            locationHistory.saveLastKm(endKm)
+        }
+        return kmPending
     }
 }

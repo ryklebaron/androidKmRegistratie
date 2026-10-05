@@ -13,6 +13,9 @@ interface DriveDao {
     @Query("SELECT * FROM drives ORDER BY startTime DESC")
     fun getAllDrives(): Flow<List<DriveEntity>>
 
+    @Query("SELECT * FROM drives WHERE id = :id")
+    suspend fun getById(id: Long): DriveEntity?
+
     @Query("SELECT * FROM drives WHERE endTime IS NULL LIMIT 1")
     suspend fun getActiveDrive(): DriveEntity?
 
@@ -29,8 +32,20 @@ interface DriveDao {
     """)
     suspend fun updateEnd(id: Long, endTime: Long, endLat: Double, endLng: Double, endAddress: String?, endKm: Int?)
 
-    @Query("UPDATE drives SET endTime = NULL, endLat = NULL, endLng = NULL, endKm = NULL WHERE id = :id")
-    suspend fun reopenDrive(id: Long)
+    @Query("SELECT * FROM drives WHERE kmPending = 1 AND endTime IS NOT NULL ORDER BY startTime ASC LIMIT 1")
+    suspend fun getOldestKmPendingDrive(): DriveEntity?
+
+    @Query("SELECT * FROM drives WHERE startTime > :startTime ORDER BY startTime ASC LIMIT 1")
+    suspend fun getNextDrive(startTime: Long): DriveEntity?
+
+    @Query("UPDATE drives SET endKm = :endKm, kmPending = 0 WHERE id = :id")
+    suspend fun resolvePendingKm(id: Long, endKm: Int)
+
+    @Query("UPDATE drives SET kmPending = 1 WHERE id = :id")
+    suspend fun markKmPending(id: Long)
+
+    @Query("UPDATE drives SET hasKmMismatch = :hasKmMismatch WHERE id = :id")
+    suspend fun updateKmMismatch(id: Long, hasKmMismatch: Boolean)
 
     @Query("UPDATE drives SET startAddress = :address WHERE id = :id")
     suspend fun updateStartAddress(id: Long, address: String)

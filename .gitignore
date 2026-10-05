@@ -26,3 +26,6 @@ local.properties
 
 # Google Services (bevat API-sleutels indien aanwezig)
 google-services.json
+
+# Kotlin compiler cache
+.kotlin/

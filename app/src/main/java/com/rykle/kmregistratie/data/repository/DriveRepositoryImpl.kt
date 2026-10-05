@@ -16,6 +16,9 @@ class DriveRepositoryImpl @Inject constructor(
     override fun getAllDrives(): Flow<List<Drive>> =
         driveDao.getAllDrives().map { list -> list.map { it.toDomain() } }
 
+    override suspend fun getDriveById(driveId: Long): Drive? =
+        driveDao.getById(driveId)?.toDomain()
+
     override suspend fun getActiveDrive(): Drive? =
         driveDao.getActiveDrive()?.toDomain()
 
@@ -59,8 +62,22 @@ class DriveRepositoryImpl @Inject constructor(
         driveDao.updateEndAddress(driveId, address)
     }
 
-    override suspend fun reopenDrive(driveId: Long) {
-        driveDao.reopenDrive(driveId)
+    override suspend fun getOldestKmPendingDrive(): Drive? =
+        driveDao.getOldestKmPendingDrive()?.toDomain()
+
+    override suspend fun getNextDrive(after: Drive): Drive? =
+        driveDao.getNextDrive(after.startTime)?.toDomain()
+
+    override suspend fun markKmPending(driveId: Long) {
+        driveDao.markKmPending(driveId)
+    }
+
+    override suspend fun resolvePendingKm(driveId: Long, endKm: Int) {
+        driveDao.resolvePendingKm(driveId, endKm)
+    }
+
+    override suspend fun updateKmMismatch(driveId: Long, hasKmMismatch: Boolean) {
+        driveDao.updateKmMismatch(driveId, hasKmMismatch)
     }
 
     override suspend fun deleteDrive(driveId: Long) {
@@ -80,6 +97,7 @@ class DriveRepositoryImpl @Inject constructor(
         driveType = DriveType.valueOf(driveType),
         startKm = startKm,
         endKm = endKm,
-        hasKmMismatch = hasKmMismatch
+        hasKmMismatch = hasKmMismatch,
+        kmPending = kmPending,
     )
 }

@@ -32,7 +32,10 @@ class ExportDrivesUseCase @Inject constructor(
         val start = timeFormat.format(Date(startTime))
         val end = endTime?.let { timeFormat.format(Date(it)) } ?: ""
         val type = if (driveType == DriveType.BUSINESS) "Zakelijk" else "Privé"
-        val remark = if (hasKmMismatch) "KM MISMATCH" else ""
+        val remark = listOfNotNull(
+            "KM MISMATCH".takeIf { hasKmMismatch },
+            "EINDSTAND ONBEKEND".takeIf { kmPending },
+        ).joinToString(" / ")
         return "$date,$start,$end,$type,$startLat,$startLng,${endLat ?: ""},${endLng ?: ""},${startKm ?: ""},${endKm ?: ""},${kmDriven ?: ""},$remark"
     }
 }

@@ -30,13 +30,33 @@ class AppPreferences @Inject constructor(@ApplicationContext private val context
         get() = prefs.getString(KEY_VCC_API_KEY, "") ?: ""
         set(value) = prefs.edit().putString(KEY_VCC_API_KEY, value).apply()
 
+    var clientId: String
+        get() = prefs.getString(KEY_CLIENT_ID, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_CLIENT_ID, value).apply()
+
+    var clientSecret: String
+        get() = prefs.getString(KEY_CLIENT_SECRET, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_CLIENT_SECRET, value).apply()
+
     var accessToken: String
         get() = prefs.getString(KEY_ACCESS_TOKEN, "") ?: ""
         set(value) = prefs.edit().putString(KEY_ACCESS_TOKEN, value).apply()
 
+    var refreshToken: String
+        get() = prefs.getString(KEY_REFRESH_TOKEN, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_REFRESH_TOKEN, value).apply()
+
+    var pendingCodeVerifier: String
+        get() = prefs.getString(KEY_PENDING_VERIFIER, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_PENDING_VERIFIER, value).apply()
+
     companion object {
         private const val KEY_VIN = "vin"
         private const val KEY_VCC_API_KEY = "vcc_api_key"
+        private const val KEY_CLIENT_ID = "volvo_client_id"
+        private const val KEY_CLIENT_SECRET = "volvo_client_secret"
         private const val KEY_ACCESS_TOKEN = "access_token"
+        private const val KEY_REFRESH_TOKEN = "refresh_token"
+        private const val KEY_PENDING_VERIFIER = "pending_code_verifier"
     }
 }

@@ -144,7 +144,14 @@ fun DriveDetailScreen(
             Spacer(Modifier.height(16.dp))
             InfoSection(title = "Kilometerstand") {
                 InfoRow("Start km", drive.startKm?.toString() ?: "onbekend")
-                InfoRow("Einde km", drive.endKm?.toString() ?: if (drive.isActive) "nog actief" else "onbekend")
+                InfoRow(
+                    "Einde km",
+                    when {
+                        drive.isActive -> "nog actief"
+                        drive.kmPending -> "nog invullen"
+                        else -> drive.endKm?.toString() ?: "onbekend"
+                    }
+                )
             }
 
             Spacer(Modifier.height(16.dp))

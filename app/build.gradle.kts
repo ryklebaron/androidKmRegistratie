@@ -18,17 +18,6 @@ android {
         versionName = "1.0"
     }
 
-    flavorDimensions += "platform"
-    productFlavors {
-        create("mobile") {
-            dimension = "platform"
-        }
-        create("automotive") {
-            dimension = "platform"
-            minSdk = 29  // AAOS minimum
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -56,9 +45,6 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.activity.compose)
     debugImplementation(libs.compose.ui.tooling)
-
-    "mobileImplementation"(libs.car.app.android)
-    "automotiveImplementation"(libs.car.app.automotive)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
