@@ -9,7 +9,7 @@ import retrofit2.http.POST
 interface VolvoAuthService {
 
     @FormUrlEncoded
-    @POST("realms/volvocars/protocol/openid-connect/token")
+    @POST("as/token.oauth2")
     suspend fun refreshToken(
         @Header("Authorization") authorization: String,
         @Field("grant_type") grantType: String,
@@ -18,7 +18,7 @@ interface VolvoAuthService {
     ): TokenResponse
 
     @FormUrlEncoded
-    @POST("realms/volvocars/protocol/openid-connect/token")
+    @POST("as/token.oauth2")
     suspend fun exchangeCode(
         @Header("Authorization") authorization: String,
         @Field("grant_type") grantType: String,

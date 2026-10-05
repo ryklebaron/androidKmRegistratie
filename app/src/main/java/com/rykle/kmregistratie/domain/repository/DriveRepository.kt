@@ -1,6 +1,7 @@
 package com.rykle.kmregistratie.domain.repository
 
 import com.rykle.kmregistratie.domain.model.Drive
+import com.rykle.kmregistratie.domain.model.DriveCorrection
 import com.rykle.kmregistratie.domain.model.DriveType
 import kotlinx.coroutines.flow.Flow
 
@@ -23,6 +24,8 @@ interface DriveRepository {
     suspend fun updateEndAddress(driveId: Long, address: String)
     suspend fun getOldestKmPendingDrive(): Drive?
     suspend fun getNextDrive(after: Drive): Drive?
+    suspend fun getPreviousDrive(before: Drive): Drive?
+    suspend fun applyCorrection(driveId: Long, correction: DriveCorrection)
     suspend fun markKmPending(driveId: Long)
     suspend fun resolvePendingKm(driveId: Long, endKm: Int)
     suspend fun updateKmMismatch(driveId: Long, hasKmMismatch: Boolean)

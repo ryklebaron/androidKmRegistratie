@@ -41,6 +41,24 @@ interface DriveDao {
     @Query("UPDATE drives SET endKm = :endKm, kmPending = 0 WHERE id = :id")
     suspend fun resolvePendingKm(id: Long, endKm: Int)
 
+    @Query("SELECT * FROM drives WHERE startTime < :startTime ORDER BY startTime DESC LIMIT 1")
+    suspend fun getPreviousDrive(startTime: Long): DriveEntity?
+
+    @Query("""
+        UPDATE drives SET
+            startKm = :startKm, endKm = :endKm,
+            startLat = :startLat, startLng = :startLng, startAddress = :startAddress,
+            endLat = :endLat, endLng = :endLng, endAddress = :endAddress,
+            kmPending = CASE WHEN :endKm IS NULL THEN kmPending ELSE 0 END
+        WHERE id = :id
+    """)
+    suspend fun updateCorrection(
+        id: Long,
+        startKm: Int?, endKm: Int?,
+        startLat: Double, startLng: Double, startAddress: String?,
+        endLat: Double?, endLng: Double?, endAddress: String?,
+    )
+
     @Query("UPDATE drives SET kmPending = 1 WHERE id = :id")
     suspend fun markKmPending(id: Long)
 

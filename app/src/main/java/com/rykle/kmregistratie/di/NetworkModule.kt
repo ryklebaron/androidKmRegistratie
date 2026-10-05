@@ -41,7 +41,7 @@ object NetworkModule {
     @Singleton
     fun provideVolvoAuthService(client: OkHttpClient): VolvoAuthService =
         Retrofit.Builder()
-            .baseUrl("https://auth.volvocars.com/")
+            .baseUrl("https://volvoid.eu.volvocars.com/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

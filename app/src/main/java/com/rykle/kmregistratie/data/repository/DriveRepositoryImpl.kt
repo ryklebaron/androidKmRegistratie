@@ -3,6 +3,7 @@ package com.rykle.kmregistratie.data.repository
 import com.rykle.kmregistratie.data.local.dao.DriveDao
 import com.rykle.kmregistratie.data.local.entity.DriveEntity
 import com.rykle.kmregistratie.domain.model.Drive
+import com.rykle.kmregistratie.domain.model.DriveCorrection
 import com.rykle.kmregistratie.domain.model.DriveType
 import com.rykle.kmregistratie.domain.repository.DriveRepository
 import kotlinx.coroutines.flow.Flow
@@ -67,6 +68,19 @@ class DriveRepositoryImpl @Inject constructor(
 
     override suspend fun getNextDrive(after: Drive): Drive? =
         driveDao.getNextDrive(after.startTime)?.toDomain()
+
+    override suspend fun getPreviousDrive(before: Drive): Drive? =
+        driveDao.getPreviousDrive(before.startTime)?.toDomain()
+
+    override suspend fun applyCorrection(driveId: Long, correction: DriveCorrection) {
+        with(correction) {
+            driveDao.updateCorrection(
+                driveId, startKm, endKm,
+                startLat, startLng, startAddress,
+                endLat, endLng, endAddress,
+            )
+        }
+    }
 
     override suspend fun markKmPending(driveId: Long) {
         driveDao.markKmPending(driveId)

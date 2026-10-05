@@ -13,6 +13,9 @@
     <string name="settings_client_id_label">Volvo Client ID</string>
     <string name="settings_client_secret_label">Volvo Client Secret</string>
     <string name="settings_save">Opslaan</string>
+    <string name="settings_cancel">Annuleren</string>
+    <string name="settings_edit">Wijzigen</string>
+    <string name="settings_saved_locked">✓ Opgeslagen — tik op Wijzigen om aan te passen</string>
     <string name="volvo_link_title">Volvo-account koppelen</string>
     <string name="volvo_link_status_linked">✓ Gekoppeld — tokens worden automatisch vernieuwd</string>
     <string name="volvo_link_status_not_linked">Niet gekoppeld</string>

@@ -18,8 +18,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -33,6 +39,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.rykle.kmregistratie.domain.model.Drive
+import com.rykle.kmregistratie.domain.model.DriveCorrection
 import com.rykle.kmregistratie.domain.model.DriveType
 import com.rykle.kmregistratie.ui.theme.MismatchRed
 import com.rykle.kmregistratie.ui.viewmodel.DriveViewModel
@@ -56,6 +64,13 @@ fun DriveDetailScreen(
     val context = LocalContext.current
 
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showKmDialog by remember { mutableStateOf(false) }
+    val previousDrive = drive?.let { d ->
+        drives.filter { it.startTime < d.startTime }.maxByOrNull { it.startTime }
+    }
+    val nextDrive = drive?.let { d ->
+        drives.filter { it.startTime > d.startTime }.minByOrNull { it.startTime }
+    }
 
     val startAddress by produceState("…", drive?.startAddress, drive?.startLat, drive?.startLng) {
         value = drive?.startAddress
@@ -91,6 +106,21 @@ fun DriveDetailScreen(
         )
     }
 
+    if (showKmDialog && drive != null) {
+        CorrectDriveDialog(
+            drive = drive,
+            startAddressShown = startAddress,
+            endAddressShown = endAddress,
+            previousDrive = previousDrive,
+            nextDrive = nextDrive,
+            onDismiss = { showKmDialog = false },
+            onSave = { correction ->
+                viewModel.correctDrive(driveId, correction)
+                showKmDialog = false
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -119,7 +149,8 @@ fun DriveDetailScreen(
         ) {
             if (drive.hasKmMismatch) {
                 Text(
-                    text = "⚠ KM-mismatch gedetecteerd",
+                    text = "⚠ KM-mismatch: start ${drive.startKm ?: "?"} km, " +
+                        "vorige rit eindigde op ${previousDrive?.endKm ?: "?"} km",
                     style = MaterialTheme.typography.labelLarge,
                     color = MismatchRed,
                     modifier = Modifier.padding(bottom = 12.dp)
@@ -152,6 +183,10 @@ fun DriveDetailScreen(
                         else -> drive.endKm?.toString() ?: "onbekend"
                     }
                 )
+                OutlinedButton(
+                    onClick = { showKmDialog = true },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) { Text("Rit corrigeren (km / locatie)") }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -177,6 +212,147 @@ fun DriveDetailScreen(
             }
         }
     }
+}
+
+@Composable
+private fun CorrectDriveDialog(
+    drive: Drive,
+    startAddressShown: String,
+    endAddressShown: String,
+    previousDrive: Drive?,
+    nextDrive: Drive?,
+    onDismiss: () -> Unit,
+    onSave: (DriveCorrection) -> Unit,
+) {
+    fun usable(shown: String) = shown.takeUnless { it == "…" || it == "Onbekend" } ?: ""
+
+    var startKmText by remember { mutableStateOf(drive.startKm?.toString() ?: "") }
+    var endKmText by remember { mutableStateOf(drive.endKm?.toString() ?: "") }
+    var startAddressText by remember { mutableStateOf(drive.startAddress ?: usable(startAddressShown)) }
+    var endAddressText by remember { mutableStateOf(drive.endAddress ?: usable(endAddressShown)) }
+    var startLat by remember { mutableStateOf(drive.startLat) }
+    var startLng by remember { mutableStateOf(drive.startLng) }
+    var endLat by remember { mutableStateOf(drive.endLat) }
+    var endLng by remember { mutableStateOf(drive.endLng) }
+
+    val startKm = startKmText.toIntOrNull()
+    val endKm = endKmText.toIntOrNull()
+    val orderValid = startKm == null || endKm == null || endKm >= startKm
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rit corrigeren") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
+                Text("Start", style = MaterialTheme.typography.titleSmall)
+                if (previousDrive != null && !previousDrive.isActive) {
+                    SuggestionButton(
+                        label = "Overnemen van einde vorige rit",
+                        km = previousDrive.endKm,
+                        address = previousDrive.endAddress,
+                    ) {
+                        previousDrive.endKm?.let { startKmText = it.toString() }
+                        previousDrive.endAddress?.let { startAddressText = it }
+                        if (previousDrive.endLat != null && previousDrive.endLng != null) {
+                            startLat = previousDrive.endLat
+                            startLng = previousDrive.endLng
+                        }
+                    }
+                }
+                KmField("Start km", startKmText) { startKmText = it }
+                OutlinedTextField(
+                    value = startAddressText,
+                    onValueChange = { startAddressText = it },
+                    label = { Text("Startadres") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                if (!drive.isActive) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Einde", style = MaterialTheme.typography.titleSmall)
+                    if (nextDrive != null) {
+                        SuggestionButton(
+                            label = "Overnemen van start volgende rit",
+                            km = nextDrive.startKm,
+                            address = nextDrive.startAddress,
+                        ) {
+                            nextDrive.startKm?.let { endKmText = it.toString() }
+                            nextDrive.startAddress?.let { endAddressText = it }
+                            if (nextDrive.startLat != 0.0 || nextDrive.startLng != 0.0) {
+                                endLat = nextDrive.startLat
+                                endLng = nextDrive.startLng
+                            }
+                        }
+                    }
+                    KmField("Einde km", endKmText, isError = !orderValid) { endKmText = it }
+                    if (!orderValid) {
+                        Text(
+                            "Eindstand moet hoger zijn dan startstand",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    OutlinedTextField(
+                        value = endAddressText,
+                        onValueChange = { endAddressText = it },
+                        label = { Text("Eindadres") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        DriveCorrection(
+                            startKm = startKm,
+                            endKm = endKm,
+                            startLat = startLat,
+                            startLng = startLng,
+                            startAddress = startAddressText.trim().ifBlank { null },
+                            endLat = endLat,
+                            endLng = endLng,
+                            endAddress = endAddressText.trim().ifBlank { null },
+                        )
+                    )
+                },
+                enabled = orderValid,
+            ) { Text("Opslaan") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annuleren") }
+        },
+    )
+}
+
+@Composable
+private fun SuggestionButton(label: String, km: Int?, address: String?, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(label, style = MaterialTheme.typography.labelLarge)
+            Text(
+                listOfNotNull(km?.let { "$it km" }, address).joinToString(" · ").ifBlank { "geen gegevens" },
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+}
+
+@Composable
+private fun KmField(label: String, value: String, isError: Boolean = false, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { onChange(it.filter(Char::isDigit)) },
+        label = { Text(label) },
+        singleLine = true,
+        isError = isError,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Suppress("DEPRECATION")

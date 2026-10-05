@@ -1,7 +1,10 @@
 package com.rykle.kmregistratie.ui.screen
 
 import android.content.Intent
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,6 +45,16 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
     var clientId by remember { mutableStateOf(viewModel.prefs.clientId) }
     var clientSecret by remember { mutableStateOf(viewModel.prefs.clientSecret) }
     var isLinked by remember { mutableStateOf(viewModel.prefs.refreshToken.isNotBlank()) }
+    var editing by remember {
+        mutableStateOf(listOf(vin, apiKey, clientId, clientSecret).any { it.isBlank() })
+    }
+
+    fun restoreSaved() {
+        vin = viewModel.prefs.vin
+        apiKey = viewModel.prefs.vccApiKey
+        clientId = viewModel.prefs.clientId
+        clientSecret = viewModel.prefs.clientSecret
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -68,6 +81,7 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
             value = vin,
             onValueChange = { vin = it },
             label = { Text(stringResource(R.string.settings_vin_label)) },
+            enabled = editing,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(12.dp))
@@ -76,6 +90,7 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
             value = apiKey,
             onValueChange = { apiKey = it },
             label = { Text(stringResource(R.string.settings_api_key_label)) },
+            enabled = editing,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(12.dp))
@@ -84,6 +99,7 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
             value = clientId,
             onValueChange = { clientId = it },
             label = { Text(stringResource(R.string.settings_client_id_label)) },
+            enabled = editing,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(12.dp))
@@ -92,19 +108,48 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
             value = clientSecret,
             onValueChange = { clientSecret = it },
             label = { Text(stringResource(R.string.settings_client_secret_label)) },
+            enabled = editing,
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(16.dp))
 
-        Button(
-            onClick = {
-                viewModel.saveSettings(vin, apiKey, clientId, clientSecret)
-                scope.launch { snackbarHostState.showSnackbar("Instellingen opgeslagen") }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.settings_save))
+        if (editing) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = {
+                        restoreSaved()
+                        editing = false
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.settings_cancel))
+                }
+                Button(
+                    onClick = {
+                        viewModel.saveSettings(vin.trim(), apiKey.trim(), clientId.trim(), clientSecret.trim())
+                        restoreSaved()
+                        editing = false
+                        scope.launch { snackbarHostState.showSnackbar("✓ Instellingen opgeslagen") }
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(R.string.settings_save))
+                }
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.settings_saved_locked),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { editing = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.settings_edit))
+            }
         }
         Spacer(Modifier.height(16.dp))
 
@@ -122,12 +167,9 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
         )
         Spacer(Modifier.height(12.dp))
 
-        val canLink = clientId.isNotBlank() && clientSecret.isNotBlank()
+        val canLink = !editing && clientId.isNotBlank() && clientSecret.isNotBlank()
         Button(
-            onClick = {
-                viewModel.saveSettings(vin, apiKey, clientId, clientSecret)
-                context.startActivity(Intent(context, VolvoOAuthActivity::class.java))
-            },
+            onClick = { context.startActivity(Intent(context, VolvoOAuthActivity::class.java)) },
             enabled = canLink,
             modifier = Modifier.fillMaxWidth(),
         ) {

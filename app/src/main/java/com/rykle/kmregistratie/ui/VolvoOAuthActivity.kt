@@ -64,8 +64,8 @@ class VolvoOAuthActivity : ComponentActivity() {
 
         val authUri = Uri.Builder()
             .scheme("https")
-            .authority("auth.volvocars.com")
-            .path("/realms/volvocars/protocol/openid-connect/auth")
+            .authority("volvoid.eu.volvocars.com")
+            .path("/as/authorization.oauth2")
             .appendQueryParameter("response_type", "code")
             .appendQueryParameter("client_id", prefs.clientId)
             .appendQueryParameter("redirect_uri", REDIRECT_URI)

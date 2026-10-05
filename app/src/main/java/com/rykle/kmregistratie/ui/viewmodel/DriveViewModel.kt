@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rykle.kmregistratie.data.local.preferences.AppPreferences
 import com.rykle.kmregistratie.domain.model.Drive
+import com.rykle.kmregistratie.domain.model.DriveCorrection
 import com.rykle.kmregistratie.domain.model.DriveType
 import com.rykle.kmregistratie.domain.usecase.DeleteDriveUseCase
 import com.rykle.kmregistratie.domain.usecase.EndDriveUseCase
@@ -15,6 +16,7 @@ import com.rykle.kmregistratie.domain.usecase.GetDrivesUseCase
 import com.rykle.kmregistratie.domain.usecase.GetPendingKmDriveUseCase
 import com.rykle.kmregistratie.domain.usecase.ResolvePendingKmUseCase
 import com.rykle.kmregistratie.domain.usecase.StartDriveUseCase
+import com.rykle.kmregistratie.domain.usecase.CorrectDriveUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,6 +42,7 @@ class DriveViewModel @Inject constructor(
     private val deleteDriveUseCase: DeleteDriveUseCase,
     private val getPendingKmDriveUseCase: GetPendingKmDriveUseCase,
     private val resolvePendingKmUseCase: ResolvePendingKmUseCase,
+    private val correctDriveUseCase: CorrectDriveUseCase,
     val prefs: AppPreferences
 ) : ViewModel() {
 
@@ -92,6 +95,13 @@ class DriveViewModel @Inject constructor(
     }
 
     fun getDriveById(driveId: Long) = drives.value.firstOrNull { it.id == driveId }
+
+    fun correctDrive(driveId: Long, correction: DriveCorrection) {
+        viewModelScope.launch {
+            correctDriveUseCase(driveId, correction)
+            loadPendingKm()
+        }
+    }
 
     // ── Openstaande eindstand ─────────────────────────────────────────────────
 
