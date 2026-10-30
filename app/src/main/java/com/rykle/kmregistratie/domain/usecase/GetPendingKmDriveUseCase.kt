@@ -9,6 +9,8 @@ data class PendingKmDrive(
     val drive: Drive,
     /** Voorgestelde eindstand, of null als er nog geen nieuwe stand bekend is. */
     val suggestedEndKm: Int?,
+    /** Er is al een volgende rit gestart; de eindstand komt dan niet meer vanzelf binnen. */
+    val hasNextDrive: Boolean,
 )
 
 class GetPendingKmDriveUseCase @Inject constructor(
@@ -17,13 +19,13 @@ class GetPendingKmDriveUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(): PendingKmDrive? {
         val drive = driveRepository.getOldestKmPendingDrive() ?: return null
-        return PendingKmDrive(drive, suggestEndKm(drive))
+        val next = driveRepository.getNextDrive(drive)
+        return PendingKmDrive(drive, suggestEndKm(drive, next), hasNextDrive = next != null)
     }
 
-    private suspend fun suggestEndKm(drive: Drive): Int? {
+    private suspend fun suggestEndKm(drive: Drive, next: Drive?): Int? {
         // Is er inmiddels een volgende rit gestart, dan is diens startstand de beste schatting;
         // de huidige Volvo-stand ligt dan al voorbij het einde van deze rit.
-        val next = driveRepository.getNextDrive(drive)
         if (next != null) return next.startKm?.takeIf { it != drive.startKm }
 
         val odometer = runCatching { volvoRepository.getCurrentOdometer() }.getOrNull()

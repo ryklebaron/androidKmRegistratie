@@ -6,8 +6,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -22,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
@@ -31,9 +34,17 @@ import androidx.navigation.compose.rememberNavController
 import com.rykle.kmregistratie.R
 import com.rykle.kmregistratie.ui.screen.DriveDetailScreen
 import com.rykle.kmregistratie.ui.screen.DriveListScreen
+import com.rykle.kmregistratie.ui.screen.OverviewScreen
 import com.rykle.kmregistratie.ui.screen.PendingKmDialog
 import com.rykle.kmregistratie.ui.screen.SettingsScreen
+import com.rykle.kmregistratie.ui.theme.Blue
+import com.rykle.kmregistratie.ui.theme.Cyan
+import com.rykle.kmregistratie.ui.theme.Deep
+import com.rykle.kmregistratie.ui.theme.Green
 import com.rykle.kmregistratie.ui.theme.KmRegistratieTheme
+import com.rykle.kmregistratie.ui.theme.TextLight
+import com.rykle.kmregistratie.ui.theme.aurora
+import com.rykle.kmregistratie.ui.theme.techGrid
 import com.rykle.kmregistratie.ui.viewmodel.DriveViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -61,6 +72,9 @@ class MainActivity : ComponentActivity() {
 
                 val navController = rememberNavController()
                 val snackbarHostState = remember { SnackbarHostState() }
+                LaunchedEffect(Unit) {
+                    viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
+                }
 
                 val pendingKm by viewModel.pendingKm.collectAsState()
                 pendingKm?.let { state ->
@@ -78,7 +92,14 @@ class MainActivity : ComponentActivity() {
 
                 val isDetailScreen = currentRoute?.startsWith("drive/") == true
 
+                // Achtergrond van baronpower.nl achter alle schermen: diepblauw, gloed en raster.
                 Scaffold(
+                    modifier = Modifier
+                        .background(Deep)
+                        .aurora(Green.copy(alpha = 0.22f), Blue.copy(alpha = 0.28f), Cyan.copy(alpha = 0.14f))
+                        .techGrid(),
+                    containerColor = Color.Transparent,
+                    contentColor = TextLight,
                     snackbarHost = { SnackbarHost(snackbarHostState) },
                     bottomBar = {
                         if (!isDetailScreen) {
@@ -88,6 +109,12 @@ class MainActivity : ComponentActivity() {
                                     onClick = { navController.navigate("drives") },
                                     icon = { Icon(Icons.Default.List, contentDescription = null) },
                                     label = { Text(stringResource(R.string.nav_drives)) }
+                                )
+                                NavigationBarItem(
+                                    selected = currentRoute == "overview",
+                                    onClick = { navController.navigate("overview") },
+                                    icon = { Icon(Icons.Default.DateRange, contentDescription = null) },
+                                    label = { Text("Overzicht") }
                                 )
                                 NavigationBarItem(
                                     selected = currentRoute == "settings",
@@ -108,6 +135,9 @@ class MainActivity : ComponentActivity() {
                             DriveListScreen(viewModel, onDriveClick = { driveId ->
                                 navController.navigate("drive/$driveId")
                             })
+                        }
+                        composable("overview") {
+                            OverviewScreen(viewModel, onDriveClick = { driveId -> navController.navigate("drive/$driveId") })
                         }
                         composable("settings") { SettingsScreen(viewModel, snackbarHostState) }
                         composable("drive/{driveId}") { backStack ->

@@ -17,7 +17,8 @@ interface DriveRepository {
         startAddress: String?,
         driveType: DriveType,
         startKm: Int?,
-        hasKmMismatch: Boolean
+        hasKmMismatch: Boolean,
+        projectId: Long? = null,
     ): Long
     suspend fun endDrive(driveId: Long, endTime: Long, endLat: Double, endLng: Double, endAddress: String?, endKm: Int?)
     suspend fun updateStartAddress(driveId: Long, address: String)
@@ -30,4 +31,11 @@ interface DriveRepository {
     suspend fun resolvePendingKm(driveId: Long, endKm: Int)
     suspend fun updateKmMismatch(driveId: Long, hasKmMismatch: Boolean)
     suspend fun deleteDrive(driveId: Long)
+    suspend fun setProjectAndNote(driveId: Long, projectId: Long?, note: String?)
+    /** Zet alleen het projectlabel op deze ritten; km en andere velden blijven ongewijzigd. */
+    suspend fun linkToProject(driveIds: List<Long>, projectId: Long)
+    /** Rit met dezelfde starttijd (op de seconde), voor het overslaan van dubbelen bij import. */
+    suspend fun findByStartTime(startTime: Long): Drive?
+    /** Volledige rit toevoegen (import); [Drive.id] wordt genegeerd. */
+    suspend fun insertDrive(drive: Drive): Long
 }

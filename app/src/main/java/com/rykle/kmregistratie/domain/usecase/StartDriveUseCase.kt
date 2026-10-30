@@ -7,46 +7,24 @@ import com.rykle.kmregistratie.domain.provider.GeocoderProvider
 import com.rykle.kmregistratie.domain.provider.LocationProvider
 import com.rykle.kmregistratie.domain.repository.DriveRepository
 import com.rykle.kmregistratie.domain.repository.LocationHistoryRepository
-import com.rykle.kmregistratie.domain.repository.VolvoRepository
 import javax.inject.Inject
 
 class StartDriveUseCase @Inject constructor(
     private val driveRepository: DriveRepository,
-    private val volvoRepository: VolvoRepository,
     private val locationProvider: LocationProvider,
     private val geocoderProvider: GeocoderProvider,
     private val locationHistory: LocationHistoryRepository,
 ) {
-    // Auto-fetch path: called from notification buttons or other non-interactive contexts.
-    suspend operator fun invoke(driveType: DriveType) {
+    /** [km] komt van de Volvo API, of is door de gebruiker bevestigd (zie [FetchStartKmUseCase]). */
+    suspend operator fun invoke(driveType: DriveType, km: Int?, projectId: Long? = null) {
         val gps = locationProvider.getCurrentLocation()
-        val (loc, knownAddress) = if (gps != null) {
+        val (location, knownAddress) = if (gps != null) {
             Pair(gps, null)
         } else {
             val last = locationHistory.getRecentLocations().firstOrNull()
             Pair(last?.let { LocationPoint(it.latitude, it.longitude) }, last?.address)
         }
-        val km = runCatching { volvoRepository.getCurrentOdometer() }.getOrNull()
-            ?: locationHistory.getLastKm()
-        execute(driveType, loc, knownAddress, km)
-    }
 
-    // Manual path: called from Android Auto after the user has selected or confirmed values.
-    suspend operator fun invoke(
-        driveType: DriveType,
-        location: LocationPoint?,
-        address: String?,
-        km: Int?,
-    ) {
-        execute(driveType, location, address, km)
-    }
-
-    private suspend fun execute(
-        driveType: DriveType,
-        location: LocationPoint?,
-        address: String?,
-        km: Int?,
-    ) {
         val activeDrive = driveRepository.getActiveDrive()
         if (activeDrive != null) {
             driveRepository.endDrive(
@@ -60,25 +38,34 @@ class StartDriveUseCase @Inject constructor(
         }
 
         val lastDrive = driveRepository.getLatestCompletedDrive()
-        // Bij een vorige rit zonder definitieve eindstand wordt de mismatch pas bepaald
+        // De startstand van deze rit is per definitie de eindstand van de vorige rit. Stond die
+        // nog open (cloud nog niet gesynct bij het beëindigen), dan vullen we hem hier in.
+        val resolvesPending = km != null && lastDrive != null && lastDrive.kmPending &&
+            km != lastDrive.startKm
+        if (resolvesPending && km != null && lastDrive != null) {
+            driveRepository.resolvePendingKm(lastDrive.id, km)
+        }
+
+        // Bij een vorige rit die nog steeds geen eindstand heeft, wordt de mismatch pas bepaald
         // zodra die eindstand is ingevuld (zie ResolvePendingKmUseCase).
-        val hasKmMismatch = km != null && lastDrive?.endKm != null &&
+        val hasKmMismatch = !resolvesPending && km != null && lastDrive?.endKm != null &&
             !lastDrive.kmPending && km != lastDrive.endKm
 
         val driveId = driveRepository.startDrive(
             startTime = System.currentTimeMillis(),
             startLat = location?.latitude ?: 0.0,
             startLng = location?.longitude ?: 0.0,
-            startAddress = address,
+            startAddress = knownAddress,
             driveType = driveType,
             startKm = km,
             hasKmMismatch = hasKmMismatch,
+            projectId = projectId,
         )
 
         val lat = location?.latitude ?: 0.0
         val lng = location?.longitude ?: 0.0
         if (lat != 0.0 || lng != 0.0) {
-            val finalAddress = address ?: geocoderProvider.getAddress(lat, lng)?.also { a ->
+            val finalAddress = knownAddress ?: geocoderProvider.getAddress(lat, lng)?.also { a ->
                 driveRepository.updateStartAddress(driveId, a)
             }
             if (finalAddress != null) {

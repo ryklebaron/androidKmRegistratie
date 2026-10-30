@@ -1,6 +1,22 @@
 package com.rykle.kmregistratie.ui.screen
 
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.text.input.KeyboardType
+import com.rykle.kmregistratie.ui.viewmodel.SyncStatus
+import com.rykle.kmregistratie.domain.model.ProjectLocations
+import androidx.compose.ui.Alignment
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,6 +85,7 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
         Text(
@@ -186,5 +203,207 @@ fun SettingsScreen(viewModel: DriveViewModel, snackbarHostState: SnackbarHostSta
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(16.dp))
+        HomeSection(viewModel)
+
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(16.dp))
+        NextcloudSection(viewModel, snackbarHostState)
+
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(16.dp))
+        ImportSection(viewModel)
     }
+}
+
+@Composable
+private fun NextcloudSection(viewModel: DriveViewModel, snackbarHostState: SnackbarHostState) {
+    val scope = rememberCoroutineScope()
+    val syncStatus by viewModel.syncStatus.collectAsState()
+    var url by remember { mutableStateOf(viewModel.prefs.nextcloudUrl) }
+    var username by remember { mutableStateOf(viewModel.prefs.nextcloudUsername) }
+    var password by remember { mutableStateOf(viewModel.prefs.nextcloudPassword) }
+    var configured by remember { mutableStateOf(viewModel.nextcloudConfigured) }
+    var editing by remember { mutableStateOf(!configured) }
+    var confirmRestore by remember { mutableStateOf(false) }
+    val busy = syncStatus is SyncStatus.Syncing
+
+    if (confirmRestore) {
+        AlertDialog(
+            onDismissRequest = { confirmRestore = false },
+            title = { Text("Ritten ophalen van Nextcloud") },
+            text = {
+                Text(
+                    "Ritten uit km_ritten.csv die hier nog niet staan worden toegevoegd. " +
+                        "Bestaande ritten blijven precies zoals ze zijn; er wordt niets gewist."
+                )
+            },
+            confirmButton = {
+                Button(onClick = { confirmRestore = false; viewModel.restoreFromNextcloud() }) { Text("Ophalen") }
+            },
+            dismissButton = { TextButton(onClick = { confirmRestore = false }) { Text("Annuleren") } },
+        )
+    }
+
+    Text("Nextcloud synchronisatie", style = MaterialTheme.typography.titleSmall)
+    Spacer(Modifier.height(4.dp))
+    Text(
+        "Na elke rit wordt de volledige rittenlijst (met projecten en notities) als km_ritten.csv " +
+            "in je Nextcloud gezet.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(12.dp))
+    OutlinedTextField(
+        value = url,
+        onValueChange = { url = it },
+        label = { Text("Nextcloud-URL") },
+        placeholder = { Text("https://cloud.voorbeeld.nl") },
+        supportingText = {
+            Text("Het adres waarmee je Nextcloud in de browser opent. Het WebDAV-adres (…/remote.php/dav/files/…) mag ook.")
+        },
+        enabled = editing,
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = username,
+        onValueChange = { username = it },
+        label = { Text("Gebruikersnaam") },
+        enabled = editing,
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = password,
+        onValueChange = { password = it },
+        label = { Text("App-wachtwoord") },
+        enabled = editing,
+        singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(Modifier.height(12.dp))
+
+    if (editing) {
+        Button(
+            onClick = {
+                viewModel.saveNextcloudSettings(url, username, password)
+                configured = viewModel.nextcloudConfigured
+                editing = !configured
+                scope.launch { snackbarHostState.showSnackbar("✓ Nextcloud-instellingen opgeslagen") }
+            },
+            enabled = url.isNotBlank() && username.isNotBlank() && password.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Nextcloud opslaan") }
+    } else {
+        Text(
+            text = when (val st = syncStatus) {
+                SyncStatus.Idle -> "Ingesteld"
+                SyncStatus.Syncing -> "Bezig met synchroniseren…"
+                is SyncStatus.Done -> "✓ Gesynchroniseerd om ${SimpleDateFormat("HH:mm", Locale("nl", "NL")).format(Date(st.atMillis))}"
+                is SyncStatus.Failed -> "⚠ ${st.reason}"
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = if (syncStatus is SyncStatus.Failed) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(
+            onClick = viewModel::syncToNextcloud,
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Nu synchroniseren") }
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { confirmRestore = true },
+                enabled = !busy,
+                modifier = Modifier.weight(1f),
+            ) { Text("Ritten ophalen") }
+            OutlinedButton(
+                onClick = { editing = true },
+                modifier = Modifier.weight(1f),
+            ) { Text(stringResource(R.string.settings_edit)) }
+        }
+    }
+}
+
+@Composable
+private fun HomeSection(viewModel: DriveViewModel) {
+    val home by viewModel.home.collectAsState()
+    val drives by viewModel.drives.collectAsState()
+    val guess = remember(drives) { ProjectLocations.guessHome(drives) }
+    var typed by remember { mutableStateOf("") }
+    // Alleen voorstellen als het echt een andere plek is dan wat nu is ingesteld.
+    val guessDiffers = guess != null && ProjectLocations.distanceMeters(
+        home.latitude, home.longitude, guess.first.latitude, guess.first.longitude,
+    ) > 30
+
+    Text("Thuislocatie", style = MaterialTheme.typography.titleSmall)
+    Spacer(Modifier.height(4.dp))
+    Text(
+        "Ritten die thuis beginnen of eindigen worden daar nooit aan een project gekoppeld. " +
+            "Alles binnen ${ProjectLocations.HOME_RADIUS_METERS.toInt()} m telt als thuis.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(8.dp))
+    Text(home.address, style = MaterialTheme.typography.bodyLarge)
+    Text(
+        "%.5f, %.5f".format(Locale.ROOT, home.latitude, home.longitude),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    if (guessDiffers && guess != null) {
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = { viewModel.setHome(guess.first) }, modifier = Modifier.fillMaxWidth()) {
+            Text("Uit je ritten: ${guess.first.address} (${guess.second}×)")
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(onClick = viewModel::useCurrentLocationAsHome, modifier = Modifier.fillMaxWidth()) {
+        Text("Huidige locatie gebruiken")
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+            value = typed,
+            onValueChange = { typed = it },
+            label = { Text("Of typ een adres") },
+            singleLine = true,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = { viewModel.setHomeFromAddress(typed); typed = "" }, enabled = typed.isNotBlank()) {
+            Text("Instellen")
+        }
+    }
+}
+
+@Composable
+private fun ImportSection(viewModel: DriveViewModel) {
+    val context = LocalContext.current
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) viewModel.importFromFile(context, uri)
+    }
+    Text("Importeren", style = MaterialTheme.typography.titleSmall)
+    Spacer(Modifier.height(4.dp))
+    Text(
+        "Ritten uit een eerder geëxporteerde CSV toevoegen. Ritten die al bestaan worden overgeslagen.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(
+        onClick = { picker.launch(arrayOf("text/*", "application/csv", "application/vnd.ms-excel")) },
+        modifier = Modifier.fillMaxWidth(),
+    ) { Text("CSV-bestand kiezen") }
 }

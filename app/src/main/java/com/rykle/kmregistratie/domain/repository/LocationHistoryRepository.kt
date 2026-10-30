@@ -8,4 +8,5 @@ interface LocationHistoryRepository {
     fun getLastKm(): Int?
     fun saveLastKm(km: Int)
     fun getHomeLocation(): SavedLocation
+    fun setHomeLocation(home: SavedLocation)
 }

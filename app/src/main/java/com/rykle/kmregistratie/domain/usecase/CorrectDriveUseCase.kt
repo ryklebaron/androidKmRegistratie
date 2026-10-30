@@ -30,4 +30,12 @@ class CorrectDriveUseCase @Inject constructor(
             (applied.endKm ?: applied.startKm)?.let { locationHistory.saveLastKm(it) }
         }
     }
+
+    suspend fun linkToProject(driveIds: List<Long>, projectId: Long) {
+        driveRepository.linkToProject(driveIds, projectId)
+    }
+
+    suspend fun setProjectAndNote(driveId: Long, projectId: Long?, note: String?) {
+        driveRepository.setProjectAndNote(driveId, projectId, note?.trim()?.ifBlank { null })
+    }
 }

@@ -20,13 +20,22 @@ class LocationHistoryPreferences @Inject constructor(
     }
     private val gson = Gson()
 
-    private val home = SavedLocation(
+    // Standaard tot de gebruiker zelf iets instelt; coördinaten = mediaan van de ritten die op
+    // "Korenlaan 18" eindigden (de oude waarde 53.3408, 6.6292 lag ± 600 m ernaast).
+    private val defaultHome = SavedLocation(
         address = "Korenlaan 18, Middelstum",
-        latitude = 53.3408,
-        longitude = 6.6292,
+        latitude = 53.345093,
+        longitude = 6.637889,
     )
 
-    override fun getHomeLocation(): SavedLocation = home
+    override fun getHomeLocation(): SavedLocation =
+        prefs.getString(KEY_HOME, null)
+            ?.let { runCatching { gson.fromJson(it, SavedLocation::class.java) }.getOrNull() }
+            ?: defaultHome
+
+    override fun setHomeLocation(home: SavedLocation) {
+        prefs.edit().putString(KEY_HOME, gson.toJson(home)).apply()
+    }
 
     override fun addLocation(location: SavedLocation) {
         if (location.address.isBlank()) return
@@ -55,6 +64,7 @@ class LocationHistoryPreferences @Inject constructor(
     companion object {
         private const val KEY_LOCATIONS = "recent_locations"
         private const val KEY_LAST_KM = "last_km"
+        private const val KEY_HOME = "home_location"
         private const val MAX_HISTORY = 10
     }
 }

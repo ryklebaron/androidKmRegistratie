@@ -16,6 +16,8 @@ data class Drive(
     val hasKmMismatch: Boolean = false,
     // Eindstand nog niet betrouwbaar: Volvo had nog geen nieuwe stand toen de rit eindigde.
     val kmPending: Boolean = false,
+    val projectId: Long? = null,
+    val note: String? = null,
 ) {
     val isActive: Boolean get() = endTime == null
     val kmDriven: Int? get() = if (!kmPending && startKm != null && endKm != null) endKm - startKm else null

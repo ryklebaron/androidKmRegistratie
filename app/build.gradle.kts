@@ -69,4 +69,6 @@ dependencies {
     implementation(libs.security.crypto)
     implementation(libs.appcompat)
     implementation(libs.core.ktx)
+
+    testImplementation(libs.junit)
 }

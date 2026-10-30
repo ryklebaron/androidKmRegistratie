@@ -20,4 +20,6 @@ data class DriveEntity(
     val endKm: Int?,
     val hasKmMismatch: Boolean,
     @ColumnInfo(defaultValue = "0") val kmPending: Boolean = false,
+    val projectId: Long? = null,
+    val note: String? = null,
 )

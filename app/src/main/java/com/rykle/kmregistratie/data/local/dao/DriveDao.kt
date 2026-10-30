@@ -73,4 +73,15 @@ interface DriveDao {
 
     @Query("DELETE FROM drives WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("UPDATE drives SET projectId = :projectId, note = :note WHERE id = :id")
+    suspend fun updateProjectAndNote(id: Long, projectId: Long?, note: String?)
+
+    /** Alleen het projectlabel; kilometerstanden blijven onaangeroerd. */
+    @Query("UPDATE drives SET projectId = :projectId WHERE id IN (:ids)")
+    suspend fun linkToProject(ids: List<Long>, projectId: Long)
+
+    /** Op de seconde nauwkeurig: de CSV bevat geen milliseconden. */
+    @Query("SELECT * FROM drives WHERE startTime / 1000 = :startSecond LIMIT 1")
+    suspend fun getByStartSecond(startSecond: Long): DriveEntity?
 }

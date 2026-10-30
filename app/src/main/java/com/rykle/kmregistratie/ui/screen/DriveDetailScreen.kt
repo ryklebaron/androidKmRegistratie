@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,11 +38,14 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.rykle.kmregistratie.domain.model.Drive
 import com.rykle.kmregistratie.domain.model.DriveCorrection
 import com.rykle.kmregistratie.domain.model.DriveType
+import com.rykle.kmregistratie.domain.model.Project
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import com.rykle.kmregistratie.ui.theme.MismatchRed
 import com.rykle.kmregistratie.ui.viewmodel.DriveViewModel
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +69,11 @@ fun DriveDetailScreen(
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showKmDialog by remember { mutableStateOf(false) }
+    var showProjectDialog by remember { mutableStateOf(false) }
+    var showSaveLocation by remember { mutableStateOf(false) }
+    var nearbyFor by remember { mutableStateOf<Project?>(null) }
+    val projects by viewModel.projects.collectAsState()
+    val home by viewModel.home.collectAsState()
     val previousDrive = drive?.let { d ->
         drives.filter { it.startTime < d.startTime }.maxByOrNull { it.startTime }
     }
@@ -106,6 +115,42 @@ fun DriveDetailScreen(
         )
     }
 
+    if (showProjectDialog && drive != null) {
+        ProjectNoteDialog(
+            drive = drive,
+            projects = recentProjectsFirst(projects, drives),
+            onCreateProject = viewModel::createProject,
+            onDismiss = { showProjectDialog = false },
+            onSave = { projectId, note ->
+                viewModel.setDriveProjectAndNote(driveId, projectId, note)
+                showProjectDialog = false
+            },
+        )
+    }
+
+    if (showSaveLocation && drive != null) {
+        SaveLocationAsProjectDialog(
+            drive = drive,
+            home = home,
+            onDismiss = { showSaveLocation = false },
+            onCreate = { atEnd, name, client ->
+                showSaveLocation = false
+                viewModel.createProjectAtDriveLocation(drive, atEnd, name, client) { nearbyFor = it }
+            },
+        )
+    }
+
+    nearbyFor?.let { project ->
+        NearbyDrivesDialog(
+            project = project,
+            drives = drives,
+            projectNames = projects.associate { it.id to it.name },
+            home = home,
+            onDismiss = { nearbyFor = null },
+            onLink = { ids, rejected -> viewModel.linkDrivesToProject(ids, project.id, rejected); nearbyFor = null },
+        )
+    }
+
     if (showKmDialog && drive != null) {
         CorrectDriveDialog(
             drive = drive,
@@ -122,8 +167,11 @@ fun DriveDetailScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = { Text(if (drive?.driveType == DriveType.BUSINESS) "Zakelijke rit" else "Privérit") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -145,6 +193,7 @@ fun DriveDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
             if (drive.hasKmMismatch) {
@@ -161,6 +210,26 @@ fun DriveDetailScreen(
                 InfoRow("Type", if (drive.driveType == DriveType.BUSINESS) "Zakelijk" else "Privé")
                 InfoRow("Status", if (drive.isActive) "Actief" else "Afgerond")
                 drive.kmDriven?.let { InfoRow("Gereden", "$it km") }
+            }
+
+            Spacer(Modifier.height(16.dp))
+            InfoSection(title = "Project & notitie") {
+                InfoRow("Project", drive.projectId?.let { id -> projects.firstOrNull { it.id == id }?.name } ?: "geen")
+                drive.note?.let { InfoRow("Notitie", it) }
+                OutlinedButton(
+                    onClick = { showProjectDialog = true },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) { Text(if (drive.projectId == null && drive.note == null) "Project of notitie toevoegen" else "Project / notitie wijzigen") }
+                OutlinedButton(
+                    onClick = { showSaveLocation = true },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) { Text("Locatie opslaan als project") }
+                val linked = drive.projectId?.let { id -> projects.firstOrNull { it.id == id } }
+                if (linked?.hasLocation == true) {
+                    TextButton(onClick = { nearbyFor = linked }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Andere ritten bij ${linked.name} zoeken")
+                    }
+                }
             }
 
             Spacer(Modifier.height(16.dp))
@@ -201,7 +270,7 @@ fun DriveDetailScreen(
                 }
             }
 
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(24.dp))
 
             Button(
                 onClick = { showDeleteDialog = true },
@@ -212,6 +281,44 @@ fun DriveDetailScreen(
             }
         }
     }
+}
+
+@Composable
+private fun ProjectNoteDialog(
+    drive: Drive,
+    projects: List<Project>,
+    onCreateProject: (String, (Project) -> Unit) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: (projectId: Long?, note: String?) -> Unit,
+) {
+    var projectId by remember { mutableStateOf(drive.projectId) }
+    var note by remember { mutableStateOf(drive.note.orEmpty()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Project & notitie") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
+                ProjectChooser(
+                    projects = projects,
+                    selectedId = projectId,
+                    onSelect = { projectId = it },
+                    onCreate = onCreateProject,
+                )
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Notitie (bv. doel of klant)") },
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = { Button(onClick = { onSave(projectId, note) }) { Text("Opslaan") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuleren") } },
+    )
 }
 
 @Composable

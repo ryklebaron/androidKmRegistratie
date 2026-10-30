@@ -23,6 +23,8 @@ object NetworkModule {
             .addInterceptor(
                 HttpLoggingInterceptor().apply {
                     level = HttpLoggingInterceptor.Level.BODY
+                    // Volvo-token en Nextcloud-wachtwoord niet in logcat
+                    redactHeader("Authorization")
                 }
             )
             .build()

@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.KmRegistratie" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.KmRegistratie" parent="android:Theme.Material.NoActionBar">
+        <!-- Diepblauw van baronpower.nl, zodat er bij het opstarten geen witte flits is -->
+        <item name="android:windowBackground">@color/deep</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/deep</item>
+    </style>
 
     <!-- Volledig transparant, geen UI — alleen voor lock screen acties -->
     <style name="Theme.Transparent" parent="Theme.AppCompat.NoActionBar">
